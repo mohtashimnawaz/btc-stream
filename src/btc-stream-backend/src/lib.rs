@@ -98,3 +98,56 @@ fn canister_heartbeat() {
         }
     });
 }
+
+#[ic_cdk::update]
+fn claim_stream(stream_id: u64) -> Result<u64, String> {
+    let caller = caller();
+    STREAMS.with(|streams| {
+        let mut streams = streams.borrow_mut();
+        let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
+        if stream.recipient != caller {
+            return Err("Only the recipient can claim".to_string());
+        }
+        if stream.buffer == 0 {
+            return Err("No funds to claim".to_string());
+        }
+        let claimed = stream.buffer;
+        stream.buffer = 0;
+        Ok(claimed) // Simulate transfer
+    })
+}
+
+#[ic_cdk::update]
+fn top_up_stream(stream_id: u64, additional_sats: u64) -> Result<(), String> {
+    let caller = caller();
+    STREAMS.with(|streams| {
+        let mut streams = streams.borrow_mut();
+        let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
+        if stream.sender != caller {
+            return Err("Only the sender can top up".to_string());
+        }
+        if stream.status != StreamStatus::Active {
+            return Err("Stream is not active".to_string());
+        }
+        stream.total_locked += additional_sats;
+        Ok(())
+    })
+}
+
+#[ic_cdk::update]
+fn cancel_stream(stream_id: u64) -> Result<(), String> {
+    let caller = caller();
+    STREAMS.with(|streams| {
+        let mut streams = streams.borrow_mut();
+        let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
+        if stream.sender != caller {
+            return Err("Only the sender can cancel".to_string());
+        }
+        if stream.status != StreamStatus::Active {
+            return Err("Stream is not active".to_string());
+        }
+        stream.status = StreamStatus::Cancelled;
+        // Slashing/refund logic: for now, just mark as cancelled
+        Ok(())
+    })
+}
