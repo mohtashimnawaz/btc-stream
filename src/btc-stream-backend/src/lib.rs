@@ -72,3 +72,29 @@ fn create_stream(
 fn greet(name: String) -> String {
     format!("Hello, {}!", name)
 }
+
+#[ic_cdk::heartbeat]
+fn canister_heartbeat() {
+    let now = ic_cdk::api::time() / 1_000_000_000; // seconds
+    STREAMS.with(|streams| {
+        let mut streams = streams.borrow_mut();
+        for stream in streams.values_mut() {
+            if stream.status != StreamStatus::Active {
+                continue;
+            }
+            let elapsed = now.saturating_sub(stream.last_release_time);
+            if elapsed == 0 {
+                continue;
+            }
+            let releasable = elapsed * stream.sats_per_sec;
+            let remaining = stream.total_locked.saturating_sub(stream.total_released);
+            let to_release = releasable.min(remaining);
+            stream.total_released += to_release;
+            stream.last_release_time = now;
+            stream.buffer += to_release; // For now, buffer simulates released but unclaimed BTC
+            if stream.total_released >= stream.total_locked || now >= stream.end_time {
+                stream.status = StreamStatus::Completed;
+            }
+        }
+    });
+}
