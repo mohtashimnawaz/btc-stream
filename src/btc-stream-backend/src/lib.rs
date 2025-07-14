@@ -1,10 +1,11 @@
 use ic_cdk::api::caller;
 use std::collections::HashMap;
 use ic_cdk::storage;
-use candid::Principal;
+use candid::{CandidType, Principal};
+use serde::{Serialize, Deserialize};
 
 // Stream status
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, CandidType, Serialize, Deserialize)]
 enum StreamStatus {
     Active,
     Cancelled,
@@ -12,7 +13,7 @@ enum StreamStatus {
 }
 
 // Stream struct
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
 struct Stream {
     id: u64,
     sender: Principal,
@@ -149,5 +150,23 @@ fn cancel_stream(stream_id: u64) -> Result<(), String> {
         stream.status = StreamStatus::Cancelled;
         // Slashing/refund logic: for now, just mark as cancelled
         Ok(())
+    })
+}
+
+#[ic_cdk::query]
+fn get_stream(stream_id: u64) -> Option<Stream> {
+    STREAMS.with(|streams| streams.borrow().get(&stream_id).cloned())
+}
+
+#[ic_cdk::query]
+fn list_streams_for_user() -> Vec<Stream> {
+    let user = caller();
+    STREAMS.with(|streams| {
+        streams
+            .borrow()
+            .values()
+            .filter(|s| s.sender == user || s.recipient == user)
+            .cloned()
+            .collect()
     })
 }
