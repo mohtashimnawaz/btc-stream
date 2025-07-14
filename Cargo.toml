@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "src/btc-stream-backend"
+]
+resolver = "2"

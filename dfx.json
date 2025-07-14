@@ -1,0 +1,27 @@
+{
+  "canisters": {
+    "btc-stream-backend": {
+      "candid": "src/btc-stream-backend/btc-stream-backend.did",
+      "package": "btc-stream-backend",
+      "type": "rust"
+    },
+    "btc-stream-frontend": {
+      "dependencies": [
+        "btc-stream-backend"
+      ],
+      "source": [
+        "src/btc-stream-frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "btc-stream-frontend"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
