@@ -1,3 +1,24 @@
+type StreamStatus = variant { Active; Cancelled; Completed; };
+type Stream = record {
+    id: nat64;
+    sender: principal;
+    recipient: principal;
+    sats_per_sec: nat64;
+    start_time: nat64;
+    end_time: nat64;
+    total_locked: nat64;
+    total_released: nat64;
+    last_release_time: nat64;
+    buffer: nat64;
+    status: StreamStatus;
+};
+
 service : {
     "greet": (text) -> (text) query;
+    "create_stream": (principal, nat64, nat64, nat64) -> (nat64);
+    "claim_stream": (nat64) -> (variant { ok: nat64; err: text });
+    "top_up_stream": (nat64, nat64) -> (variant { ok: null; err: text });
+    "cancel_stream": (nat64) -> (variant { ok: null; err: text });
+    "get_stream": (nat64) -> (opt Stream) query;
+    "list_streams_for_user": () -> (vec Stream) query;
 }
