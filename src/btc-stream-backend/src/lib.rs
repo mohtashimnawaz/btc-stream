@@ -622,3 +622,91 @@ fn check_and_execute_milestones(stream_id: u64, current_released: u64) {
         }
     });
 }
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+struct StreamFilter {
+    status: Option<StreamStatus>,
+    min_amount: Option<u64>,
+    max_amount: Option<u64>,
+    min_duration: Option<u64>,
+    max_duration: Option<u64>,
+    sender: Option<Principal>,
+    recipient: Option<Principal>,
+    created_after: Option<u64>,
+    created_before: Option<u64>,
+}
+
+#[ic_cdk::query]
+fn search_streams(filter: StreamFilter) -> Vec<Stream> {
+    let user = caller();
+    STREAMS.with(|streams| {
+        streams
+            .borrow()
+            .values()
+            .filter(|s| {
+                // User must be involved in the stream
+                if s.sender != user && s.recipient != user {
+                    return false;
+                }
+                
+                // Apply filters
+                if let Some(status) = &filter.status {
+                    if s.status != *status {
+                        return false;
+                    }
+                }
+                
+                if let Some(min_amount) = filter.min_amount {
+                    if s.total_locked < min_amount {
+                        return false;
+                    }
+                }
+                
+                if let Some(max_amount) = filter.max_amount {
+                    if s.total_locked > max_amount {
+                        return false;
+                    }
+                }
+                
+                if let Some(min_duration) = filter.min_duration {
+                    if (s.end_time - s.start_time) < min_duration {
+                        return false;
+                    }
+                }
+                
+                if let Some(max_duration) = filter.max_duration {
+                    if (s.end_time - s.start_time) > max_duration {
+                        return false;
+                    }
+                }
+                
+                if let Some(sender) = filter.sender {
+                    if s.sender != sender {
+                        return false;
+                    }
+                }
+                
+                if let Some(recipient) = filter.recipient {
+                    if s.recipient != recipient {
+                        return false;
+                    }
+                }
+                
+                if let Some(created_after) = filter.created_after {
+                    if s.start_time < created_after {
+                        return false;
+                    }
+                }
+                
+                if let Some(created_before) = filter.created_before {
+                    if s.start_time > created_before {
+                        return false;
+                    }
+                }
+                
+                true
+            })
+            .cloned()
+            .collect()
+    })
+}
