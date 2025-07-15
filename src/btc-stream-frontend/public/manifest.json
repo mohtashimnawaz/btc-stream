@@ -1,0 +1,26 @@
+{
+  "name": "BTC Stream",
+  "short_name": "BTC Stream",
+  "description": "Real-time Bitcoin streaming payments on Internet Computer",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#f7931a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "200x200",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/logo-large.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bitcoinGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f7931a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffb347;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="streamGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4a90e2;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#7ed321;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#50e3c2;stop-opacity:0.4" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="none" stroke="#f0f0f0" stroke-width="2"/>
+  
+  <!-- Bitcoin symbol background -->
+  <circle cx="100" cy="100" r="40" fill="url(#bitcoinGradient)" opacity="0.9"/>
+  
+  <!-- Bitcoin B symbol -->
+  <path d="M85 75 L85 125 L105 125 C112 125 115 120 115 115 C115 110 112 108 108 108 C112 108 115 105 115 100 C115 95 112 90 105 90 L85 90 Z M90 80 L103 80 C107 80 110 82 110 85 C110 88 107 90 103 90 L90 90 Z M90 95 L105 95 C109 95 112 97 112 100 C112 103 109 105 105 105 L90 105 Z" fill="white" opacity="0.9"/>
+  
+  <!-- Streaming lines -->
+  <g opacity="0.8">
+    <!-- Stream line 1 -->
+    <path d="M20 80 Q60 75 100 80 Q140 85 180 80" stroke="url(#streamGradient)" stroke-width="3" fill="none" filter="url(#glow)">
+      <animate attributeName="d" values="M20 80 Q60 75 100 80 Q140 85 180 80;M20 80 Q60 85 100 80 Q140 75 180 80;M20 80 Q60 75 100 80 Q140 85 180 80" dur="3s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Stream line 2 -->
+    <path d="M20 100 Q60 95 100 100 Q140 105 180 100" stroke="url(#streamGradient)" stroke-width="3" fill="none" filter="url(#glow)">
+      <animate attributeName="d" values="M20 100 Q60 95 100 100 Q140 105 180 100;M20 100 Q60 105 100 100 Q140 95 180 100;M20 100 Q60 95 100 100 Q140 105 180 100" dur="3s" repeatCount="indefinite" begin="1s"/>
+    </path>
+    
+    <!-- Stream line 3 -->
+    <path d="M20 120 Q60 115 100 120 Q140 125 180 120" stroke="url(#streamGradient)" stroke-width="3" fill="none" filter="url(#glow)">
+      <animate attributeName="d" values="M20 120 Q60 115 100 120 Q140 125 180 120;M20 120 Q60 125 100 120 Q140 115 180 120;M20 120 Q60 115 100 120 Q140 125 180 120" dur="3s" repeatCount="indefinite" begin="2s"/>
+    </path>
+  </g>
+  
+  <!-- Animated particles -->
+  <g opacity="0.6">
+    <circle cx="30" cy="85" r="2" fill="#4a90e2">
+      <animate attributeName="cx" values="30;170;30" dur="4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;0" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="25" cy="105" r="1.5" fill="#7ed321">
+      <animate attributeName="cx" values="25;175;25" dur="5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;0" dur="5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="35" cy="125" r="1.8" fill="#50e3c2">
+      <animate attributeName="cx" values="35;165;35" dur="3.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;0" dur="3.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Outer ring for modern touch -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="url(#bitcoinGradient)" stroke-width="2" opacity="0.3" stroke-dasharray="10,5">
+    <animateTransform attributeName="transform" type="rotate" values="0 100 100;360 100 100" dur="20s" repeatCount="indefinite"/>
+  </circle>
+</svg>
