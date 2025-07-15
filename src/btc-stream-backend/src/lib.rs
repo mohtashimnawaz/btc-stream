@@ -203,12 +203,17 @@ fn create_stream(
         last_release_time: start_time,
         buffer: 0,
         status: StreamStatus::Active,
-        last_claim_time: start_time, // NEW
+        last_claim_time: start_time,
+        title: None,
+        description: None,
+        tags: Vec::new(),
+        metadata: HashMap::new(),
     };
     STREAMS.with(|streams| {
         streams.borrow_mut().insert(id, stream);
     });
     update_stats_on_create(sender, total_locked, duration_secs);
+    create_notification(sender, id, NotificationType::StreamCreated, "Stream created successfully".to_string());
     id
 }
 
@@ -235,9 +240,15 @@ fn canister_heartbeat() {
             let to_release = releasable.min(remaining);
             stream.total_released += to_release;
             stream.last_release_time = now;
-            stream.buffer += to_release; // For now, buffer simulates released but unclaimed BTC
+            stream.buffer += to_release;
+            
+            // Check milestones
+            check_and_execute_milestones(stream.id, stream.total_released);
+            
             if stream.total_released >= stream.total_locked || now >= stream.end_time {
                 stream.status = StreamStatus::Completed;
+                create_notification(stream.sender, stream.id, NotificationType::StreamCompleted, "Stream completed".to_string());
+                create_notification(stream.recipient, stream.id, NotificationType::StreamCompleted, "Stream completed".to_string());
             }
         }
     });
