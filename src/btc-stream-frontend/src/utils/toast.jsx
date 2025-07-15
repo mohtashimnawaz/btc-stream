@@ -1,4 +1,4 @@
-import toast from 'react-hot-toast';
+import { toast as hotToast } from 'react-hot-toast';
 import { CheckCircle, AlertCircle, XCircle, Info } from 'lucide-react';
 
 const toastOptions = {
@@ -16,7 +16,7 @@ const toastOptions = {
 
 export const showToast = {
   success: (message, options = {}) => {
-    toast.success(message, {
+    hotToast.success(message, {
       ...toastOptions,
       icon: <CheckCircle className="w-5 h-5 text-green-500" />,
       style: {
@@ -28,7 +28,7 @@ export const showToast = {
   },
   
   error: (message, options = {}) => {
-    toast.error(message, {
+    hotToast.error(message, {
       ...toastOptions,
       icon: <XCircle className="w-5 h-5 text-red-500" />,
       style: {
@@ -40,7 +40,7 @@ export const showToast = {
   },
   
   warning: (message, options = {}) => {
-    toast(message, {
+    hotToast(message, {
       ...toastOptions,
       icon: <AlertCircle className="w-5 h-5 text-yellow-500" />,
       style: {
@@ -52,7 +52,7 @@ export const showToast = {
   },
   
   info: (message, options = {}) => {
-    toast(message, {
+    hotToast(message, {
       ...toastOptions,
       icon: <Info className="w-5 h-5 text-blue-500" />,
       style: {
@@ -64,22 +64,23 @@ export const showToast = {
   },
   
   loading: (message, options = {}) => {
-    return toast.loading(message, {
+    return hotToast.loading(message, {
       ...toastOptions,
       ...options,
     });
   },
   
   dismiss: (toastId) => {
-    toast.dismiss(toastId);
+    hotToast.dismiss(toastId);
   },
   
   promise: (promise, messages, options = {}) => {
-    return toast.promise(promise, messages, {
+    return hotToast.promise(promise, messages, {
       ...toastOptions,
       ...options,
     });
   },
 };
 
+export const toast = showToast;
 export default showToast;
