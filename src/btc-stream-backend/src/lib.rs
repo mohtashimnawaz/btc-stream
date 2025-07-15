@@ -109,6 +109,30 @@ struct Notification {
     read: bool,
 }
 
+// Statistics and analytics
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+struct StreamStats {
+    total_streams_created: u64,
+    total_volume_locked: u64,
+    total_volume_claimed: u64,
+    active_streams: u64,
+    completed_streams: u64,
+    cancelled_streams: u64,
+    average_stream_duration: u64,
+    total_fees_collected: u64,
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+struct UserStats {
+    user: Principal,
+    streams_created: u64,
+    streams_received: u64,
+    total_sent: u64,
+    total_received: u64,
+    total_fees_paid: u64,
+    avg_stream_size: u64,
+}
+
 // Storage for streams
 thread_local! {
     static STREAMS: std::cell::RefCell<HashMap<u64, Stream>> = std::cell::RefCell::new(HashMap::new());
@@ -125,6 +149,21 @@ thread_local! {
 thread_local! {
     static NOTIFICATIONS: std::cell::RefCell<HashMap<u64, Notification>> = std::cell::RefCell::new(HashMap::new());
     static NEXT_NOTIFICATION_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
+}
+
+// Storage for stats
+thread_local! {
+    static GLOBAL_STATS: std::cell::RefCell<StreamStats> = std::cell::RefCell::new(StreamStats {
+        total_streams_created: 0,
+        total_volume_locked: 0,
+        total_volume_claimed: 0,
+        active_streams: 0,
+        completed_streams: 0,
+        cancelled_streams: 0,
+        average_stream_duration: 0,
+        total_fees_collected: 0,
+    });
+    static USER_STATS: std::cell::RefCell<HashMap<Principal, UserStats>> = std::cell::RefCell::new(HashMap::new());
 }
 
 const FEE_PERCENT: f64 = 0.01; // 1% fee
@@ -163,6 +202,7 @@ fn create_stream(
     STREAMS.with(|streams| {
         streams.borrow_mut().insert(id, stream);
     });
+    update_stats_on_create(sender, total_locked, duration_secs);
     id
 }
 
@@ -410,4 +450,40 @@ fn mark_notification_read(notification_id: u64) -> bool {
         }
         false
     })
+}
+
+fn update_stats_on_create(sender: Principal, total_locked: u64, duration: u64) {
+    GLOBAL_STATS.with(|stats| {
+        let mut stats = stats.borrow_mut();
+        stats.total_streams_created += 1;
+        stats.total_volume_locked += total_locked;
+        stats.active_streams += 1;
+        stats.average_stream_duration = (stats.average_stream_duration + duration) / 2;
+    });
+    
+    USER_STATS.with(|user_stats| {
+        let mut user_stats = user_stats.borrow_mut();
+        let user_stat = user_stats.entry(sender).or_insert(UserStats {
+            user: sender,
+            streams_created: 0,
+            streams_received: 0,
+            total_sent: 0,
+            total_received: 0,
+            total_fees_paid: 0,
+            avg_stream_size: 0,
+        });
+        user_stat.streams_created += 1;
+        user_stat.total_sent += total_locked;
+        user_stat.avg_stream_size = user_stat.total_sent / user_stat.streams_created;
+    });
+}
+
+#[ic_cdk::query]
+fn get_global_stats() -> StreamStats {
+    GLOBAL_STATS.with(|stats| stats.borrow().clone())
+}
+
+#[ic_cdk::query]
+fn get_user_stats(user: Principal) -> Option<UserStats> {
+    USER_STATS.with(|user_stats| user_stats.borrow().get(&user).cloned())
 }
