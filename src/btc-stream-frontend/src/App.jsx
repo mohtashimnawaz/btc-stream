@@ -50,7 +50,7 @@ const App = () => {
   useEffect(() => {
     // Generate a mock principal for demo purposes
     // In a real app, this would come from Internet Identity
-    const mockPrincipal = Principal.fromText('rdmx6-jaaaa-aaaah-qcaiq-cai');
+    const mockPrincipal = Principal.fromText('rrkah-fqaaa-aaaaa-aaaaq-cai');
     setCurrentPrincipal(mockPrincipal);
     
     loadData();
@@ -62,7 +62,7 @@ const App = () => {
       setError(null);
       
       // Load streams - using mock principal for demo
-      const mockPrincipal = Principal.fromText('rdmx6-jaaaa-aaaah-qcaiq-cai');
+      const mockPrincipal = Principal.fromText('rrkah-fqaaa-aaaaa-aaaaq-cai');
       const streamsResult = await btc_stream_backend.list_streams_for_user(mockPrincipal);
       setStreams(streamsResult);
       
@@ -654,7 +654,7 @@ const App = () => {
                   value={createForm.recipient}
                   onChange={(e) => setCreateForm({...createForm, recipient: e.target.value})}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent backdrop-blur-sm"
-                  placeholder="rdmx6-jaaaa-aaaah-qcaiq-cai"
+                  placeholder="rrkah-fqaaa-aaaaa-aaaaq-cai"
                   required
                 />
               </div>
