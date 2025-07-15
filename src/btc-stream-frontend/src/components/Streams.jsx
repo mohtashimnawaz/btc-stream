@@ -8,7 +8,7 @@ import {
   Zap, 
   Pause, 
   Play,
-  Stop,
+  Square,
   Eye,
   Settings,
   Clock,
@@ -225,7 +225,7 @@ const Streams = () => {
                         onClick={() => handleStreamAction(stream.id, 'cancel')}
                         className="p-2 bg-red-600/20 rounded-lg hover:bg-red-600/30 transition-all duration-300"
                       >
-                        <Stop className="w-4 h-4 text-red-400" />
+                        <Square className="w-4 h-4 text-red-400" />
                       </AnimatedButton>
                     )}
                   </div>
