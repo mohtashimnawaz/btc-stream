@@ -539,3 +539,86 @@ fn resume_stream(stream_id: u64) -> PauseResult {
         }
     })
 }
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+enum MilestoneAction {
+    SendNotification(String),
+    AutoClaim,
+    PauseStream,
+    TopUpStream(u64),
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+struct Milestone {
+    id: u64,
+    stream_id: u64,
+    trigger_amount: u64, // Amount released to trigger this milestone
+    action: MilestoneAction,
+    triggered: bool,
+    created_by: Principal,
+}
+
+// Storage for milestones
+thread_local! {
+    static MILESTONES: std::cell::RefCell<HashMap<u64, Milestone>> = std::cell::RefCell::new(HashMap::new());
+    static NEXT_MILESTONE_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
+}
+
+#[ic_cdk::update]
+fn add_milestone(stream_id: u64, trigger_amount: u64, action: MilestoneAction) -> u64 {
+    let creator = caller();
+    let id = NEXT_MILESTONE_ID.with(|id| {
+        let mut id_mut = id.borrow_mut();
+        let curr = *id_mut;
+        *id_mut += 1;
+        curr
+    });
+    
+    let milestone = Milestone {
+        id,
+        stream_id,
+        trigger_amount,
+        action,
+        triggered: false,
+        created_by: creator,
+    };
+    
+    MILESTONES.with(|milestones| {
+        milestones.borrow_mut().insert(id, milestone);
+    });
+    
+    id
+}
+
+fn check_and_execute_milestones(stream_id: u64, current_released: u64) {
+    MILESTONES.with(|milestones| {
+        let mut milestones = milestones.borrow_mut();
+        for milestone in milestones.values_mut() {
+            if milestone.stream_id == stream_id 
+                && !milestone.triggered 
+                && current_released >= milestone.trigger_amount {
+                
+                milestone.triggered = true;
+                match &milestone.action {
+                    MilestoneAction::SendNotification(msg) => {
+                        create_notification(
+                            milestone.created_by,
+                            stream_id,
+                            NotificationType::StreamCreated,
+                            msg.clone(),
+                        );
+                    }
+                    MilestoneAction::AutoClaim => {
+                        // Auto-claim logic would go here
+                    }
+                    MilestoneAction::PauseStream => {
+                        // Auto-pause logic would go here
+                    }
+                    MilestoneAction::TopUpStream(_amount) => {
+                        // Auto-topup logic would go here
+                    }
+                }
+            }
+        }
+    });
+}
