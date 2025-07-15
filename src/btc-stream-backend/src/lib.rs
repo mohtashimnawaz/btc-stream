@@ -66,10 +66,36 @@ struct Stream {
     last_claim_time: u64, // NEW
 }
 
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+struct StreamTemplate {
+    id: u64,
+    name: String,
+    description: String,
+    duration_secs: u64,
+    sats_per_sec: u64,
+    creator: Principal,
+    created_at: u64,
+    usage_count: u64,
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+enum TemplateResult {
+    #[serde(rename = "ok")]
+    Ok(u64),
+    #[serde(rename = "err")]
+    Err(String),
+}
+
 // Storage for streams
 thread_local! {
     static STREAMS: std::cell::RefCell<HashMap<u64, Stream>> = std::cell::RefCell::new(HashMap::new());
     static NEXT_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
+}
+
+// Storage for templates
+thread_local! {
+    static TEMPLATES: std::cell::RefCell<HashMap<u64, StreamTemplate>> = std::cell::RefCell::new(HashMap::new());
+    static NEXT_TEMPLATE_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
 }
 
 const FEE_PERCENT: f64 = 0.01; // 1% fee
@@ -253,5 +279,55 @@ fn list_streams_for_user() -> Vec<Stream> {
             .filter(|s| s.sender == user || s.recipient == user)
             .cloned()
             .collect()
+    })
+}
+
+#[ic_cdk::update]
+fn create_template(name: String, description: String, duration_secs: u64, sats_per_sec: u64) -> TemplateResult {
+    let creator = caller();
+    let now = ic_cdk::api::time() / 1_000_000_000;
+    
+    let id = NEXT_TEMPLATE_ID.with(|id| {
+        let mut id_mut = id.borrow_mut();
+        let curr = *id_mut;
+        *id_mut += 1;
+        curr
+    });
+    
+    let template = StreamTemplate {
+        id,
+        name,
+        description,
+        duration_secs,
+        sats_per_sec,
+        creator,
+        created_at: now,
+        usage_count: 0,
+    };
+    
+    TEMPLATES.with(|templates| {
+        templates.borrow_mut().insert(id, template);
+    });
+    
+    TemplateResult::Ok(id)
+}
+
+#[ic_cdk::update]
+fn create_stream_from_template(template_id: u64, recipient: Principal, total_locked: u64) -> u64 {
+    TEMPLATES.with(|templates| {
+        let mut templates = templates.borrow_mut();
+        if let Some(template) = templates.get_mut(&template_id) {
+            template.usage_count += 1;
+            create_stream(recipient, template.sats_per_sec, template.duration_secs, total_locked)
+        } else {
+            0 // Handle error properly in real implementation
+        }
+    })
+}
+
+#[ic_cdk::query]
+fn list_templates() -> Vec<StreamTemplate> {
+    TEMPLATES.with(|templates| {
+        templates.borrow().values().cloned().collect()
     })
 }
