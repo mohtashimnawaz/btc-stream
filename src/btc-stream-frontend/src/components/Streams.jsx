@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import useBTCStreamStore from '../store/useBTCStreamStore.js';
 import { AnimatedCard, AnimatedButton, AnimatedModal, AnimatedList, AnimatedListItem } from './animations.jsx';
-import { toast } from '../utils/toast.js';
+import { toast } from '../utils/toast.jsx';
 
 const Streams = () => {
   const { streams, createStream, updateStream, deleteStream, loading } = useBTCStreamStore();

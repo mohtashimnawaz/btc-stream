@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { btc_stream_backend } from '../../../declarations/btc-stream-backend';
+import { btc_stream_backend } from 'declarations/btc-stream-backend';
 import { Principal } from '@dfinity/principal';
 
 const useBTCStreamStore = create((set, get) => ({

@@ -17,7 +17,7 @@ import {
 import { format, subDays, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import useBTCStreamStore from '../store/useBTCStreamStore.js';
 import { AnimatedCard, AnimatedButton, AnimatedList, AnimatedListItem } from './animations.jsx';
-import { toast } from '../utils/toast.js';
+import { toast } from '../utils/toast.jsx';
 
 const Analytics = () => {
   const { streams, globalStats, getUserStats } = useBTCStreamStore();
