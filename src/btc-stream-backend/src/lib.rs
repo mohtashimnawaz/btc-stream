@@ -25,6 +25,7 @@ struct Stream {
     last_release_time: u64,
     buffer: u64,
     status: StreamStatus,
+    last_claim_time: u64, // NEW
 }
 
 // Storage for streams
@@ -32,6 +33,9 @@ thread_local! {
     static STREAMS: std::cell::RefCell<HashMap<u64, Stream>> = std::cell::RefCell::new(HashMap::new());
     static NEXT_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
 }
+
+const FEE_PERCENT: f64 = 0.01; // 1% fee
+const RECLAIM_TIMEOUT_SECS: u64 = 7 * 24 * 60 * 60; // 7 days
 
 #[ic_cdk::update]
 fn create_stream(
@@ -61,6 +65,7 @@ fn create_stream(
         last_release_time: start_time,
         buffer: 0,
         status: StreamStatus::Active,
+        last_claim_time: start_time, // NEW
     };
     STREAMS.with(|streams| {
         streams.borrow_mut().insert(id, stream);
@@ -102,6 +107,7 @@ fn canister_heartbeat() {
 #[ic_cdk::update]
 fn claim_stream(stream_id: u64) -> Result<u64, String> {
     let caller = caller();
+    let now = ic_cdk::api::time() / 1_000_000_000;
     STREAMS.with(|streams| {
         let mut streams = streams.borrow_mut();
         let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
@@ -113,6 +119,7 @@ fn claim_stream(stream_id: u64) -> Result<u64, String> {
         }
         let claimed = stream.buffer;
         stream.buffer = 0;
+        stream.last_claim_time = now; // NEW
         Ok(claimed) // Simulate transfer
     })
 }
@@ -135,7 +142,7 @@ fn top_up_stream(stream_id: u64, additional_sats: u64) -> Result<(), String> {
 }
 
 #[ic_cdk::update]
-fn cancel_stream(stream_id: u64) -> Result<(), String> {
+fn cancel_stream(stream_id: u64) -> Result<(u64, u64), String> {
     let caller = caller();
     STREAMS.with(|streams| {
         let mut streams = streams.borrow_mut();
@@ -147,8 +154,34 @@ fn cancel_stream(stream_id: u64) -> Result<(), String> {
             return Err("Stream is not active".to_string());
         }
         stream.status = StreamStatus::Cancelled;
-        // Slashing/refund logic: for now, just mark as cancelled
-        Ok(())
+        let unused = stream.total_locked.saturating_sub(stream.total_released);
+        let fee = (unused as f64 * FEE_PERCENT).round() as u64;
+        let refund = unused.saturating_sub(fee);
+        // Simulate refund by returning refund and fee
+        Ok((refund, fee))
+    })
+}
+
+#[ic_cdk::update]
+fn reclaim_unclaimed(stream_id: u64) -> Result<u64, String> {
+    let caller = caller();
+    let now = ic_cdk::api::time() / 1_000_000_000;
+    STREAMS.with(|streams| {
+        let mut streams = streams.borrow_mut();
+        let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
+        if stream.sender != caller {
+            return Err("Only the sender can reclaim".to_string());
+        }
+        if stream.buffer == 0 {
+            return Err("No unclaimed funds to reclaim".to_string());
+        }
+        let claimable_time = stream.end_time.max(stream.last_claim_time) + RECLAIM_TIMEOUT_SECS;
+        if now < claimable_time {
+            return Err("Reclaim timeout not reached".to_string());
+        }
+        let reclaimed = stream.buffer;
+        stream.buffer = 0;
+        Ok(reclaimed) // Simulate reclaim
     })
 }
 
