@@ -368,79 +368,6 @@ fn list_streams_for_user() -> Vec<Stream> {
     })
 }
 
-#[ic_cdk::update]
-fn create_template(name: String, description: String, duration_secs: u64, sats_per_sec: u64) -> TemplateResult {
-    let creator = caller();
-    let now = ic_cdk::api::time() / 1_000_000_000;
-    
-    let id = NEXT_TEMPLATE_ID.with(|id| {
-        let mut id_mut = id.borrow_mut();
-        let curr = *id_mut;
-        *id_mut += 1;
-        curr
-    });
-    
-    let template = StreamTemplate {
-        id,
-        name,
-        description,
-        duration_secs,
-        sats_per_sec,
-        creator,
-        created_at: now,
-        usage_count: 0,
-    };
-    
-    TEMPLATES.with(|templates| {
-        templates.borrow_mut().insert(id, template);
-    });
-    
-    TemplateResult::Ok(id)
-}
-
-#[ic_cdk::update]
-fn create_stream_from_template(template_id: u64, recipient: Principal, total_locked: u64) -> u64 {
-    TEMPLATES.with(|templates| {
-        let mut templates = templates.borrow_mut();
-        if let Some(template) = templates.get_mut(&template_id) {
-            template.usage_count += 1;
-            create_stream(recipient, template.sats_per_sec, template.duration_secs, total_locked)
-        } else {
-            0 // Handle error properly in real implementation
-        }
-    })
-}
-
-#[ic_cdk::query]
-fn list_templates() -> Vec<StreamTemplate> {
-    TEMPLATES.with(|templates| {
-        templates.borrow().values().cloned().collect()
-    })
-}
-
-fn create_notification(user: Principal, stream_id: u64, notification_type: NotificationType, message: String) {
-    let id = NEXT_NOTIFICATION_ID.with(|id| {
-        let mut id_mut = id.borrow_mut();
-        let curr = *id_mut;
-        *id_mut += 1;
-        curr
-    });
-    
-    let notification = Notification {
-        id,
-        user,
-        stream_id,
-        notification_type,
-        message,
-        timestamp: ic_cdk::api::time() / 1_000_000_000,
-        read: false,
-    };
-    
-    NOTIFICATIONS.with(|notifications| {
-        notifications.borrow_mut().insert(id, notification);
-    });
-}
-
 #[ic_cdk::query]
 fn get_notifications() -> Vec<Notification> {
     let user = caller();
@@ -725,4 +652,77 @@ fn search_streams(filter: StreamFilter) -> Vec<Stream> {
             .cloned()
             .collect()
     })
+}
+
+#[ic_cdk::update]
+fn create_template(name: String, description: String, duration_secs: u64, sats_per_sec: u64) -> TemplateResult {
+    let creator = caller();
+    let now = ic_cdk::api::time() / 1_000_000_000;
+    
+    let id = NEXT_TEMPLATE_ID.with(|id| {
+        let mut id_mut = id.borrow_mut();
+        let curr = *id_mut;
+        *id_mut += 1;
+        curr
+    });
+    
+    let template = StreamTemplate {
+        id,
+        name,
+        description,
+        duration_secs,
+        sats_per_sec,
+        creator,
+        created_at: now,
+        usage_count: 0,
+    };
+    
+    TEMPLATES.with(|templates| {
+        templates.borrow_mut().insert(id, template);
+    });
+    
+    TemplateResult::Ok(id)
+}
+
+#[ic_cdk::update]
+fn create_stream_from_template(template_id: u64, recipient: Principal, total_locked: u64) -> u64 {
+    TEMPLATES.with(|templates| {
+        let mut templates = templates.borrow_mut();
+        if let Some(template) = templates.get_mut(&template_id) {
+            template.usage_count += 1;
+            create_stream(recipient, template.sats_per_sec, template.duration_secs, total_locked)
+        } else {
+            0 // Handle error properly in real implementation
+        }
+    })
+}
+
+#[ic_cdk::query]
+fn list_templates() -> Vec<StreamTemplate> {
+    TEMPLATES.with(|templates| {
+        templates.borrow().values().cloned().collect()
+    })
+}
+
+fn create_notification(user: Principal, stream_id: u64, notification_type: NotificationType, message: String) {
+    let id = NEXT_NOTIFICATION_ID.with(|id| {
+        let mut id_mut = id.borrow_mut();
+        let curr = *id_mut;
+        *id_mut += 1;
+        curr
+    });
+    
+    let notification = Notification {
+        id,
+        user,
+        stream_id,
+        notification_type,
+        message,
+        timestamp: ic_cdk::api::time() / 1_000_000_000,
+        read: false,
+    };
+    
+    NOTIFICATIONS.with(|notifications| {
+        notifications.borrow_mut().insert(id, notification);
+    });
 }
