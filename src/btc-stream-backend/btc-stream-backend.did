@@ -11,6 +11,7 @@ type Stream = record {
     last_release_time: nat64;
     buffer: nat64;
     status: StreamStatus;
+    last_claim_time: nat64;
 };
 
 service : {
@@ -18,7 +19,8 @@ service : {
     "create_stream": (principal, nat64, nat64, nat64) -> (nat64);
     "claim_stream": (nat64) -> (variant { ok: nat64; err: text });
     "top_up_stream": (nat64, nat64) -> (variant { ok: null; err: text });
-    "cancel_stream": (nat64) -> (variant { ok: null; err: text });
+    "cancel_stream": (nat64) -> (variant { ok: record { refund: nat64; fee: nat64 }; err: text });
+    "reclaim_unclaimed": (nat64) -> (variant { ok: nat64; err: text });
     "get_stream": (nat64) -> (opt Stream) query;
     "list_streams_for_user": () -> (vec Stream) query;
 }
