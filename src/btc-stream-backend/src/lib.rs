@@ -45,6 +45,7 @@ enum ReclaimResult {
 #[derive(Clone, Debug, PartialEq, CandidType, Serialize, Deserialize)]
 enum StreamStatus {
     Active,
+    Paused,
     Cancelled,
     Completed,
 }
@@ -486,4 +487,55 @@ fn get_global_stats() -> StreamStats {
 #[ic_cdk::query]
 fn get_user_stats(user: Principal) -> Option<UserStats> {
     USER_STATS.with(|user_stats| user_stats.borrow().get(&user).cloned())
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+enum PauseResult {
+    #[serde(rename = "ok")]
+    Ok(()),
+    #[serde(rename = "err")]
+    Err(String),
+}
+
+#[ic_cdk::update]
+fn pause_stream(stream_id: u64) -> PauseResult {
+    let caller = caller();
+    STREAMS.with(|streams| {
+        let mut streams = streams.borrow_mut();
+        match streams.get_mut(&stream_id) {
+            None => PauseResult::Err("Stream not found".to_string()),
+            Some(stream) => {
+                if stream.sender != caller {
+                    return PauseResult::Err("Only the sender can pause".to_string());
+                }
+                if stream.status != StreamStatus::Active {
+                    return PauseResult::Err("Stream is not active".to_string());
+                }
+                stream.status = StreamStatus::Paused;
+                PauseResult::Ok(())
+            }
+        }
+    })
+}
+
+#[ic_cdk::update]
+fn resume_stream(stream_id: u64) -> PauseResult {
+    let caller = caller();
+    STREAMS.with(|streams| {
+        let mut streams = streams.borrow_mut();
+        match streams.get_mut(&stream_id) {
+            None => PauseResult::Err("Stream not found".to_string()),
+            Some(stream) => {
+                if stream.sender != caller {
+                    return PauseResult::Err("Only the sender can resume".to_string());
+                }
+                if stream.status != StreamStatus::Paused {
+                    return PauseResult::Err("Stream is not paused".to_string());
+                }
+                stream.status = StreamStatus::Active;
+                stream.last_release_time = ic_cdk::api::time() / 1_000_000_000;
+                PauseResult::Ok(())
+            }
+        }
+    })
 }
