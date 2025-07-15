@@ -86,6 +86,29 @@ enum TemplateResult {
     Err(String),
 }
 
+// Notification system
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+enum NotificationType {
+    StreamCreated,
+    StreamClaimed,
+    StreamTopUp,
+    StreamCancelled,
+    StreamCompleted,
+    LowBalance,
+    ClaimReminder,
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+struct Notification {
+    id: u64,
+    user: Principal,
+    stream_id: u64,
+    notification_type: NotificationType,
+    message: String,
+    timestamp: u64,
+    read: bool,
+}
+
 // Storage for streams
 thread_local! {
     static STREAMS: std::cell::RefCell<HashMap<u64, Stream>> = std::cell::RefCell::new(HashMap::new());
@@ -96,6 +119,12 @@ thread_local! {
 thread_local! {
     static TEMPLATES: std::cell::RefCell<HashMap<u64, StreamTemplate>> = std::cell::RefCell::new(HashMap::new());
     static NEXT_TEMPLATE_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
+}
+
+// Storage for notifications
+thread_local! {
+    static NOTIFICATIONS: std::cell::RefCell<HashMap<u64, Notification>> = std::cell::RefCell::new(HashMap::new());
+    static NEXT_NOTIFICATION_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
 }
 
 const FEE_PERCENT: f64 = 0.01; // 1% fee
@@ -329,5 +358,56 @@ fn create_stream_from_template(template_id: u64, recipient: Principal, total_loc
 fn list_templates() -> Vec<StreamTemplate> {
     TEMPLATES.with(|templates| {
         templates.borrow().values().cloned().collect()
+    })
+}
+
+fn create_notification(user: Principal, stream_id: u64, notification_type: NotificationType, message: String) {
+    let id = NEXT_NOTIFICATION_ID.with(|id| {
+        let mut id_mut = id.borrow_mut();
+        let curr = *id_mut;
+        *id_mut += 1;
+        curr
+    });
+    
+    let notification = Notification {
+        id,
+        user,
+        stream_id,
+        notification_type,
+        message,
+        timestamp: ic_cdk::api::time() / 1_000_000_000,
+        read: false,
+    };
+    
+    NOTIFICATIONS.with(|notifications| {
+        notifications.borrow_mut().insert(id, notification);
+    });
+}
+
+#[ic_cdk::query]
+fn get_notifications() -> Vec<Notification> {
+    let user = caller();
+    NOTIFICATIONS.with(|notifications| {
+        notifications
+            .borrow()
+            .values()
+            .filter(|n| n.user == user)
+            .cloned()
+            .collect()
+    })
+}
+
+#[ic_cdk::update]
+fn mark_notification_read(notification_id: u64) -> bool {
+    let user = caller();
+    NOTIFICATIONS.with(|notifications| {
+        let mut notifications = notifications.borrow_mut();
+        if let Some(notification) = notifications.get_mut(&notification_id) {
+            if notification.user == user {
+                notification.read = true;
+                return true;
+            }
+        }
+        false
     })
 }
