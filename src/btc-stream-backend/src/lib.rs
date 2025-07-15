@@ -3,6 +3,44 @@ use std::collections::HashMap;
 use candid::{CandidType, Principal};
 use serde::{Serialize, Deserialize};
 
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+struct CancelResult {
+    refund: u64,
+    fee: u64,
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+enum ClaimResult {
+    #[serde(rename = "ok")]
+    Ok(u64),
+    #[serde(rename = "err")]
+    Err(String),
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+enum TopUpResult {
+    #[serde(rename = "ok")]
+    Ok(()),
+    #[serde(rename = "err")]
+    Err(String),
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+enum CancelStreamResult {
+    #[serde(rename = "ok")]
+    Ok(CancelResult),
+    #[serde(rename = "err")]
+    Err(String),
+}
+
+#[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
+enum ReclaimResult {
+    #[serde(rename = "ok")]
+    Ok(u64),
+    #[serde(rename = "err")]
+    Err(String),
+}
+
 // Stream status
 #[derive(Clone, Debug, PartialEq, CandidType, Serialize, Deserialize)]
 enum StreamStatus {
@@ -105,83 +143,98 @@ fn canister_heartbeat() {
 }
 
 #[ic_cdk::update]
-fn claim_stream(stream_id: u64) -> Result<u64, String> {
+fn claim_stream(stream_id: u64) -> ClaimResult {
     let caller = caller();
     let now = ic_cdk::api::time() / 1_000_000_000;
     STREAMS.with(|streams| {
         let mut streams = streams.borrow_mut();
-        let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
-        if stream.recipient != caller {
-            return Err("Only the recipient can claim".to_string());
+        match streams.get_mut(&stream_id) {
+            None => ClaimResult::Err("Stream not found".to_string()),
+            Some(stream) => {
+                if stream.recipient != caller {
+                    return ClaimResult::Err("Only the recipient can claim".to_string());
+                }
+                if stream.buffer == 0 {
+                    return ClaimResult::Err("No funds to claim".to_string());
+                }
+                let claimed = stream.buffer;
+                stream.buffer = 0;
+                stream.last_claim_time = now;
+                ClaimResult::Ok(claimed)
+            }
         }
-        if stream.buffer == 0 {
-            return Err("No funds to claim".to_string());
-        }
-        let claimed = stream.buffer;
-        stream.buffer = 0;
-        stream.last_claim_time = now; // NEW
-        Ok(claimed) // Simulate transfer
     })
 }
 
 #[ic_cdk::update]
-fn top_up_stream(stream_id: u64, additional_sats: u64) -> Result<(), String> {
+fn top_up_stream(stream_id: u64, additional_sats: u64) -> TopUpResult {
     let caller = caller();
     STREAMS.with(|streams| {
         let mut streams = streams.borrow_mut();
-        let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
-        if stream.sender != caller {
-            return Err("Only the sender can top up".to_string());
+        match streams.get_mut(&stream_id) {
+            None => TopUpResult::Err("Stream not found".to_string()),
+            Some(stream) => {
+                if stream.sender != caller {
+                    return TopUpResult::Err("Only the sender can top up".to_string());
+                }
+                if stream.status != StreamStatus::Active {
+                    return TopUpResult::Err("Stream is not active".to_string());
+                }
+                stream.total_locked += additional_sats;
+                TopUpResult::Ok(())
+            }
         }
-        if stream.status != StreamStatus::Active {
-            return Err("Stream is not active".to_string());
-        }
-        stream.total_locked += additional_sats;
-        Ok(())
     })
 }
 
 #[ic_cdk::update]
-fn cancel_stream(stream_id: u64) -> Result<(u64, u64), String> {
+fn cancel_stream(stream_id: u64) -> CancelStreamResult {
     let caller = caller();
     STREAMS.with(|streams| {
         let mut streams = streams.borrow_mut();
-        let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
-        if stream.sender != caller {
-            return Err("Only the sender can cancel".to_string());
+        match streams.get_mut(&stream_id) {
+            None => CancelStreamResult::Err("Stream not found".to_string()),
+            Some(stream) => {
+                if stream.sender != caller {
+                    return CancelStreamResult::Err("Only the sender can cancel".to_string());
+                }
+                if stream.status != StreamStatus::Active {
+                    return CancelStreamResult::Err("Stream is not active".to_string());
+                }
+                stream.status = StreamStatus::Cancelled;
+                let unused = stream.total_locked.saturating_sub(stream.total_released);
+                let fee = (unused as f64 * FEE_PERCENT).round() as u64;
+                let refund = unused.saturating_sub(fee);
+                CancelStreamResult::Ok(CancelResult { refund, fee })
+            }
         }
-        if stream.status != StreamStatus::Active {
-            return Err("Stream is not active".to_string());
-        }
-        stream.status = StreamStatus::Cancelled;
-        let unused = stream.total_locked.saturating_sub(stream.total_released);
-        let fee = (unused as f64 * FEE_PERCENT).round() as u64;
-        let refund = unused.saturating_sub(fee);
-        // Simulate refund by returning refund and fee
-        Ok((refund, fee))
     })
 }
 
 #[ic_cdk::update]
-fn reclaim_unclaimed(stream_id: u64) -> Result<u64, String> {
+fn reclaim_unclaimed(stream_id: u64) -> ReclaimResult {
     let caller = caller();
     let now = ic_cdk::api::time() / 1_000_000_000;
     STREAMS.with(|streams| {
         let mut streams = streams.borrow_mut();
-        let stream = streams.get_mut(&stream_id).ok_or("Stream not found")?;
-        if stream.sender != caller {
-            return Err("Only the sender can reclaim".to_string());
+        match streams.get_mut(&stream_id) {
+            None => ReclaimResult::Err("Stream not found".to_string()),
+            Some(stream) => {
+                if stream.sender != caller {
+                    return ReclaimResult::Err("Only the sender can reclaim".to_string());
+                }
+                if stream.buffer == 0 {
+                    return ReclaimResult::Err("No unclaimed funds to reclaim".to_string());
+                }
+                let claimable_time = stream.end_time.max(stream.last_claim_time) + RECLAIM_TIMEOUT_SECS;
+                if now < claimable_time {
+                    return ReclaimResult::Err("Reclaim timeout not reached".to_string());
+                }
+                let reclaimed = stream.buffer;
+                stream.buffer = 0;
+                ReclaimResult::Ok(reclaimed)
+            }
         }
-        if stream.buffer == 0 {
-            return Err("No unclaimed funds to reclaim".to_string());
-        }
-        let claimable_time = stream.end_time.max(stream.last_claim_time) + RECLAIM_TIMEOUT_SECS;
-        if now < claimable_time {
-            return Err("Reclaim timeout not reached".to_string());
-        }
-        let reclaimed = stream.buffer;
-        stream.buffer = 0;
-        Ok(reclaimed) // Simulate reclaim
     })
 }
 
