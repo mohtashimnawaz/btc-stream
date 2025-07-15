@@ -356,8 +356,7 @@ fn get_stream(stream_id: u64) -> Option<Stream> {
 }
 
 #[ic_cdk::query]
-fn list_streams_for_user() -> Vec<Stream> {
-    let user = caller();
+fn list_streams_for_user(user: Principal) -> Vec<Stream> {
     STREAMS.with(|streams| {
         streams
             .borrow()
@@ -701,6 +700,34 @@ fn create_stream_from_template(template_id: u64, recipient: Principal, total_loc
 fn list_templates() -> Vec<StreamTemplate> {
     TEMPLATES.with(|templates| {
         templates.borrow().values().cloned().collect()
+    })
+}
+
+#[ic_cdk::query]
+fn get_stream_stats(stream_id: u64) -> Option<StreamStats> {
+    STREAMS.with(|streams| {
+        if let Some(stream) = streams.borrow().get(&stream_id) {
+            // Calculate basic stats for this specific stream
+            let duration = stream.end_time - stream.start_time;
+            let _completion_rate = if stream.total_locked > 0 {
+                (stream.total_released as f64 / stream.total_locked as f64 * 100.0) as u64
+            } else {
+                0
+            };
+            
+            Some(StreamStats {
+                total_streams_created: 1,
+                total_volume_locked: stream.total_locked,
+                total_volume_claimed: stream.total_released - stream.buffer,
+                active_streams: if stream.status == StreamStatus::Active { 1 } else { 0 },
+                completed_streams: if stream.status == StreamStatus::Completed { 1 } else { 0 },
+                cancelled_streams: if stream.status == StreamStatus::Cancelled { 1 } else { 0 },
+                average_stream_duration: duration,
+                total_fees_collected: 0, // Would need to calculate based on actual fees
+            })
+        } else {
+            None
+        }
     })
 }
 

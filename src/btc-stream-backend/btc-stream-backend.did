@@ -108,7 +108,7 @@ service : {
     "cancel_stream": (nat64) -> (variant { ok: record { refund: nat64; fee: nat64 }; err: text });
     "reclaim_unclaimed": (nat64) -> (variant { ok: nat64; err: text });
     "get_stream": (nat64) -> (opt Stream) query;
-    "list_streams_for_user": () -> (vec Stream) query;
+    "list_streams_for_user": (principal) -> (vec Stream) query;
     
     // Stream control
     "pause_stream": (nat64) -> (variant { ok: null; err: text });
@@ -126,6 +126,7 @@ service : {
     // Statistics
     "get_global_stats": () -> (StreamStats) query;
     "get_user_stats": (principal) -> (opt UserStats) query;
+    "get_stream_stats": (nat64) -> (opt StreamStats) query;
     
     // Milestones
     "add_milestone": (nat64, nat64, MilestoneAction) -> (nat64);
