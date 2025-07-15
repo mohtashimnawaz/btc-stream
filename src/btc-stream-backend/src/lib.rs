@@ -64,7 +64,12 @@ struct Stream {
     last_release_time: u64,
     buffer: u64,
     status: StreamStatus,
-    last_claim_time: u64, // NEW
+    last_claim_time: u64,
+    // New metadata fields
+    title: Option<String>,
+    description: Option<String>,
+    tags: Vec<String>,
+    metadata: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
