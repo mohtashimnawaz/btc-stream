@@ -1,31 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { btc_stream_backend } from 'declarations/btc-stream-backend';
-import { Principal } from '@dfinity/principal';
-import { 
-  Play, 
-  Pause, 
-  Plus, 
-  TrendingUp, 
-  Clock, 
-  Bitcoin, 
-  Bell, 
-  Search,
-  User,
-  Settings,
-  LogOut,
-  Wallet,
-  Activity,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  ArrowRight,
-  ArrowDown,
-  ArrowUp,
-  Zap,
-  Shield,
-  Eye,
-  EyeOff
-} from 'lucide-react';
+import React from 'react';
+import { Toaster } from 'react-hot-toast';
+import Router from './Router.jsx';
+import './index.css';
 
 const App = () => {
   const [streams, setStreams] = useState([]);
